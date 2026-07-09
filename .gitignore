@@ -1,0 +1,8 @@
+# local secrets / scratch — never commit
+token
+Inputs
+
+# wrangler local state
+worker/.wrangler/
+
+node_modules/
