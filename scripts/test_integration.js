@@ -1,5 +1,5 @@
 // Integration test: real network geocode + weather, then the exported engine.
-const C = require("../app.js");
+const C = require("../js/engine.js");
 
 (async () => {
   const zip = "02118";

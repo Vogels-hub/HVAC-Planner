@@ -1,13 +1,27 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
-  <rect width="512" height="512" rx="96" fill="#0b3d2e"/>
-  <g fill="none" stroke="#34d399" stroke-width="18" stroke-linecap="round" stroke-linejoin="round">
-    <!-- thermometer -->
-    <path d="M176 120 v150 a56 56 0 1 0 56 0 V120 a28 28 0 0 0 -56 0 Z" fill="#0e1512" stroke="#34d399"/>
-    <circle cx="204" cy="300" r="34" fill="#38bdf8" stroke="#38bdf8"/>
-    <!-- flame (furnace) -->
-    <path d="M330 200 c40 30 50 70 20 110 c10 -30 -10 -50 -30 -55 c25 35 15 75 -20 95 c-5 -70 35 -110 30 -150 Z" fill="#fbbf24" stroke="#fbbf24"/>
-    <!-- snow / balance arrow -->
-    <path d="M120 400 h272" stroke="#eaf3ee"/>
-    <path d="M360 384 l24 16 -24 16" stroke="#eaf3ee"/>
-  </g>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#182342"/>
+      <stop offset="1" stop-color="#0b101f"/>
+    </linearGradient>
+    <linearGradient id="fl" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="#38bdf8"/>
+      <stop offset="0.42" stop-color="#7dd3fc"/>
+      <stop offset="0.58" stop-color="#fbbf24"/>
+      <stop offset="1" stop-color="#f97316"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <path fill="url(#fl)" d="M 256 64
+    C 292 140 384 200 384 308
+    C 384 396 326 456 256 456
+    C 186 456 128 396 128 308
+    C 128 246 158 204 196 158
+    C 198 210 224 242 258 246
+    C 222 186 230 118 256 64 Z"/>
+  <path fill="#0d1322" opacity="0.92" d="M 256 272
+    C 278 308 318 326 318 366
+    C 318 402 292 426 256 426
+    C 220 426 194 402 194 366
+    C 194 326 234 308 256 272 Z"/>
 </svg>

@@ -26,7 +26,7 @@ FIELDS = [
     "maintenance_capacity_rated17_rated47", "maintenance_capacity_5_47",
     "cop_max_5", "hspf_region_iv_2", "hspf_region_v_2",
     "lock_out_temp", "refrigerant", "ahri_certificate_number",
-    "seer_2", "eer_2",
+    "seer_2", "eer_2", "furnace_unit_number",
 ]
 
 
@@ -88,9 +88,18 @@ def fetch_brand(brand, seen, out, lock):
                     continue
                 k = (rec.get("outdoor_unit_number") or rec.get("model_number") or "").upper()
                 if k in seen:
+                    # Same outdoor unit listed multiple times (different indoor
+                    # pairings). If this variant is a dual-fuel pairing and the
+                    # kept record isn't, backfill the furnace model so the app
+                    # can flag the unit as dual fuel.
+                    if rec.get("furnace_unit_number"):
+                        kept = seen[k]
+                        if not kept.get("furnace_unit_number"):
+                            kept["furnace_unit_number"] = rec["furnace_unit_number"]
                     continue
-                seen.add(k)
-                out.append({f: rec.get(f) for f in FIELDS})
+                trimmed = {f: rec.get(f) for f in FIELDS}
+                seen[k] = trimmed
+                out.append(trimmed)
             added += len(out) - before
     return brand, added
 
@@ -98,7 +107,7 @@ def fetch_brand(brand, seen, out, lock):
 def main():
     brands = get_brands()
     print(f"{len(brands)} brands", file=sys.stderr)
-    seen = set()
+    seen = {}
     out = []
     lock = __import__("threading").Lock()
     with ThreadPoolExecutor(max_workers=CONCURRENCY) as ex:

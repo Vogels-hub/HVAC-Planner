@@ -3,10 +3,10 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#0b3d2e" />
+  <meta name="theme-color" content="#0d1322" />
   <meta name="color-scheme" content="dark" />
-  <meta name="description" content="Calculate the dual-fuel heat-pump / furnace balance (break) point from model number, zip code, weather and energy prices." />
-  <title>Dual Fuel Balance Point</title>
+  <meta name="description" content="Find the outdoor temperature where your gas furnace becomes cheaper than your heat pump, and see what the optimal dual-fuel setup saves per year." />
+  <title>Dual Fuel Optimizer</title>
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" type="image/svg+xml" href="assets/icon.svg" />
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
@@ -14,231 +14,342 @@
 </head>
 <body>
   <header class="appbar">
-    <div class="appbar-inner">
-      <img src="assets/icon.svg" alt="" class="logo" />
-      <div>
-        <h1>Dual Fuel Balance Point</h1>
-        <p class="sub">Heat pump &times; furnace break-even calculator</p>
-      </div>
-      <button id="settingsBtn" class="iconbtn" title="Settings" aria-label="Settings">
-        <img src="assets/gear.svg" width="20" height="20" alt="" class="gear" />
-      </button>
+    <img src="assets/icon.svg" alt="" class="logo" />
+    <div class="appbar-title">
+      <h1>Dual Fuel Optimizer</h1>
+      <p>Heat pump + furnace, done right</p>
     </div>
+    <button id="settingsBtn" class="iconbtn" title="Settings" aria-label="Settings">
+      <img src="assets/gear.svg" width="20" height="20" alt="" />
+    </button>
   </header>
 
   <main>
-    <!-- INPUT CARD -->
-    <section class="card" id="inputCard">
-      <h2>1 &middot; Equipment &amp; location</h2>
+    <!-- ============ SETUP ============ -->
+    <section id="tab-setup" class="tab active">
+      <section class="card step" id="stepLocation">
+        <div class="step-head">
+          <span class="step-num" id="badgeZip">1</span>
+          <div>
+            <h2>Where's the home?</h2>
+            <p>Weather and energy prices come from the zip code</p>
+          </div>
+        </div>
+        <input id="zip" type="text" inputmode="numeric" maxlength="5" autocomplete="postal-code"
+               placeholder="5-digit zip code" aria-label="Zip code" />
+        <div id="zipInfo" class="field-note" role="status" aria-live="polite"></div>
+      </section>
 
-      <label for="model">Heat pump model number</label>
-      <div class="row">
-        <input id="model" type="text" inputmode="text" autocomplete="off"
-               placeholder="e.g. SL25XPV, 38MURA, GSZC18" />
-        <button id="lookupBtn" class="primary">Look up</button>
-      </div>
-      <div id="lookupStatus" class="status" role="status" aria-live="polite"></div>
+      <section class="card step" id="stepHP">
+        <div class="step-head">
+          <span class="step-num" id="badgeHP">2</span>
+          <div>
+            <h2>Which heat pump?</h2>
+            <p>Search the model number on the outdoor unit's nameplate</p>
+          </div>
+        </div>
+        <div id="hpSearchWrap">
+          <input id="hpSearch" type="search" autocomplete="off" autocapitalize="characters"
+                 placeholder="Search model or brand (e.g. SL25XPV)" aria-label="Heat pump model search" />
+          <div id="hpResults" class="search-results" hidden></div>
+          <div id="hpSearchNote" class="field-note" role="status" aria-live="polite"></div>
+        </div>
+        <div id="hpSelected" class="selected-unit" hidden></div>
+        <button id="manualBtn" class="linklike" type="button">Can't find it? Enter specs manually</button>
+      </section>
 
-      <div id="matchArea" class="match-area" hidden>
-        <label>Select matching model</label>
-        <div id="matchList" class="match-list"></div>
-      </div>
-
-      <label for="zip">Zip code</label>
-      <div class="row">
-        <input id="zip" type="text" inputmode="numeric" maxlength="5" autocomplete="postal-code" placeholder="e.g. 02118" />
-        <button id="calcBtn" class="primary">Calculate</button>
-      </div>
-      <div id="zipStatus" class="status" role="status" aria-live="polite"></div>
-      <div id="weatherStatus" class="status" role="status" aria-live="polite"></div>
-
-      <details id="manualDetails">
-        <summary>Enter specs manually</summary>
-
-        <h3 class="grp">Heat pump</h3>
+      <section class="card step" id="stepHome">
+        <div class="step-head">
+          <span class="step-num done-optional" id="badgeHome">3</span>
+          <div>
+            <h2>Home &amp; furnace</h2>
+            <p>Defaults work — add your heat load to unlock yearly savings</p>
+          </div>
+        </div>
         <div class="grid2">
-          <label>Brand<input id="m_brand" type="text" placeholder="Brand" /></label>
-          <label>Model<input id="m_model" type="text" placeholder="Model" /></label>
-          <label>Stages
-            <select id="m_stages">
-              <option value="1">1 stage</option>
-              <option value="2">2 stage</option>
-            </select>
+          <label>Thermostat setting
+            <span class="unit-wrap"><input id="indoor" type="number" value="70" step="1" inputmode="numeric" /><span class="unit">&deg;F</span></span>
+          </label>
+          <label>Furnace efficiency
+            <span class="unit-wrap"><input id="afue" type="number" value="95" step="1" min="40" max="100" inputmode="numeric" /><span class="unit">% AFUE</span></span>
+          </label>
+          <label>Home heat load <button id="estBtn" class="mini-link" type="button">estimate</button>
+            <span class="unit-wrap"><input id="designLoad" type="number" min="0" step="1000" placeholder="optional" inputmode="numeric" /><span class="unit">BTU/h</span></span>
+          </label>
+          <label>Design outdoor temp
+            <span class="unit-wrap"><input id="designTemp" type="number" step="1" placeholder="auto" inputmode="numeric" /><span class="unit">&deg;F</span></span>
+          </label>
+          <label class="span2">Furnace output <span class="opt">(for sizing check)</span>
+            <span class="unit-wrap"><input id="furnaceBtu" type="number" min="0" step="1000" placeholder="optional" inputmode="numeric" /><span class="unit">BTU/h</span></span>
           </label>
         </div>
+      </section>
 
-        <h3 class="grp">Heat pump &mdash; Stage 1</h3>
-        <div class="grid2">
-          <label>BTU/hr @ 47&deg;F<input id="m_cap47" type="number" min="0" step="500" placeholder="22000" /></label>
-          <label>BTU/hr @ 17&deg;F<input id="m_cap17" type="number" min="0" step="500" placeholder="16900" /></label>
-          <label>COP @ 47&deg;F<input id="m_cop47" type="number" min="0" step="0.05" placeholder="3.5" /></label>
-          <label>COP @ 17&deg;F<input id="m_cop17" type="number" min="0" step="0.05" placeholder="2.5" /></label>
-          <label>HSPF2<input id="m_hspf2" type="number" min="0" step="0.1" placeholder="9.0" /></label>
-          <label>Lockout temp &deg;F<input id="m_lockout" type="number" step="1" placeholder="optional" /></label>
-        </div>
-
-        <div id="stage2Wrap" hidden>
-          <h3 class="grp">Heat pump &mdash; Stage 2</h3>
-          <div class="grid2">
-            <label>BTU/hr @ 47&deg;F<input id="m2_cap47" type="number" min="0" step="500" placeholder="28000" /></label>
-            <label>BTU/hr @ 17&deg;F<input id="m2_cap17" type="number" min="0" step="500" placeholder="20000" /></label>
-            <label>COP @ 47&deg;F<input id="m2_cop47" type="number" min="0" step="0.05" placeholder="2.8" /></label>
-            <label>COP @ 17&deg;F<input id="m2_cop17" type="number" min="0" step="0.05" placeholder="2.0" /></label>
+      <section class="card step" id="stepPrices">
+        <div class="step-head">
+          <span class="step-num done-optional" id="badgePrices">4</span>
+          <div>
+            <h2>Energy prices</h2>
+            <p>Auto-filled from state averages — your bill is more accurate</p>
           </div>
         </div>
-
-        <h3 class="grp">Furnace</h3>
         <div class="grid2">
-          <label>BTU/hr<input id="furnaceBtu" type="number" min="0" step="1000" placeholder="e.g. 60000" /></label>
-          <label>AFUE<input id="afue" type="number" value="0.95" step="0.01" min="0.4" max="1" /></label>
+          <label>Electricity
+            <span class="unit-wrap"><span class="unit">$</span><input id="elec" type="number" min="0" step="0.001" placeholder="auto" inputmode="decimal" /><span class="unit">/kWh</span></span>
+          </label>
+          <label>Natural gas
+            <span class="unit-wrap"><span class="unit">$</span><input id="gas" type="number" min="0" step="0.01" placeholder="auto" inputmode="decimal" /><span class="unit">/therm</span></span>
+          </label>
         </div>
-
-        <button id="useManualBtn" class="secondary">Use these specs</button>
-        <div id="manualStatus" class="status" role="status" aria-live="polite"></div>
-      </details>
+        <div id="priceNote" class="field-note"></div>
+      </section>
     </section>
 
-      <!-- HOME & PRICES CARD -->
+    <!-- ============ RESULTS ============ -->
+    <section id="tab-results" class="tab">
+      <div id="resultsEmpty" class="empty-state">
+        <div class="empty-icon">&#127777;</div>
+        <h2>No results yet</h2>
+        <p>Enter a zip code and pick a heat pump in Setup, then hit <strong>See results</strong>.</p>
+        <button class="secondary" type="button" data-goto="setup">Go to Setup</button>
+      </div>
+      <div id="resultsBody" hidden>
+        <section class="hero" id="heroCard">
+          <p class="hero-label" id="heroLabel">Switch to gas below</p>
+          <p class="hero-value" id="heroValue">32&deg;F</p>
+          <p class="hero-sub" id="heroSub"></p>
+          <div class="hero-chips" id="heroChips"></div>
+        </section>
+        <section class="card" id="annualCard" hidden>
+          <h2>What a year costs</h2>
+          <div id="annualBars"></div>
+          <p class="field-note" id="annualNote"></p>
+        </section>
+        <section class="card" id="loadNudge" hidden>
+          <h2>See yearly savings</h2>
+          <p class="field-note">Add your home's heat load in Setup (or tap estimate) to compare
+            what dual fuel, heat-pump-only, and gas-only cost per year.</p>
+          <button class="secondary" type="button" id="nudgeEstBtn">Estimate my heat load</button>
+        </section>
+        <section class="card">
+          <h2>Cost of heat by outdoor temp</h2>
+          <canvas id="costChart" width="640" height="300" aria-label="Cost of heat versus outdoor temperature"></canvas>
+          <p class="field-note">Where the lines cross is your switchover point.</p>
+        </section>
+        <section class="card" id="capCard">
+          <h2>Can the heat pump keep up?</h2>
+          <canvas id="capChart" width="640" height="300" aria-label="Heat pump capacity versus home heat demand"></canvas>
+          <p class="field-note" id="capNote"></p>
+        </section>
+        <section class="card">
+          <details id="numbersDetails">
+            <summary>All the numbers</summary>
+            <div id="numbersBody"></div>
+          </details>
+        </section>
+        <div class="action-row">
+          <button id="reportBtn" class="secondary" type="button">Save PDF report</button>
+          <button id="goCompareBtn" class="primary" type="button">Compare systems</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ COMPARE ============ -->
+    <section id="tab-compare" class="tab">
       <section class="card">
-        <details id="advDetails" open>
-          <summary>2 &middot; Home &amp; prices</summary>
-          <div class="grid2">
-            <label>Indoor setpoint (&deg;F)<input id="indoor" type="number" value="70" step="1" /></label>
-            <label>Home design heat load (BTU/h)<input id="designLoad" type="number" min="0" step="1000" placeholder="optional" /></label>
-            <label>Design outdoor temp (&deg;F)<input id="designTemp" type="number" step="1" placeholder="0" /></label>
-            <label>Electricity (&dollar;/kWh)<input id="elec" type="number" min="0" step="0.001" placeholder="auto" /></label>
-            <label>Natural gas (&dollar;/therm)<input id="gas" type="number" min="0" step="0.01" placeholder="auto" /></label>
+        <div class="step-head no-num">
+          <div>
+            <h2>Compare systems</h2>
+            <p>Line up dual fuel, heat-pump-only, gas-only — or a different model — and see which wins</p>
           </div>
-          <p class="hint">Design load + temp enable the <em>capacity</em> balance point &amp; annual $ estimate. Prices auto-fill from your state average (EIA) and can be edited.</p>
-        </details>
+        </div>
+        <div id="scenarioList" class="scenario-list"></div>
+        <div class="action-row">
+          <button id="cmpAddBtn" class="secondary" type="button">+ Add scenario</button>
+          <button id="cmpRunBtn" class="primary" type="button">Compare</button>
+        </div>
+        <button id="cmpClearBtn" class="linklike" type="button" hidden>Clear all scenarios</button>
       </section>
-
-    <!-- RESULTS -->
-    <section id="results" class="results" hidden>
-      <div id="resultCards"></div>
-      <div class="card">
-        <h2>Heat pump performance</h2>
-        <canvas id="perfChart" width="640" height="320" aria-label="Capacity and COP vs temperature"></canvas>
-      </div>
-      <div class="card">
-        <h2>Cost of heat vs outdoor temperature</h2>
-        <canvas id="costChart" width="640" height="320" aria-label="Cost of heat vs temperature"></canvas>
-      </div>
-      <div class="card" id="annualCard">
-        <h2>Annual heating cost comparison</h2>
-        <div id="annualBody"></div>
-      </div>
-    </section>
-
-    <!-- COMPARE -->
-    <section class="card" id="compareCard">
-      <h2>Compare systems</h2>
-      <p class="hint">Build scenarios from the current heat pump &amp; furnace (or add another model) and compare yearly heating cost across dual-fuel, heat-pump-only, and furnace-only.</p>
-      <div class="toolbar">
-        <button id="cmpSeedBtn" class="secondary">Compare current system</button>
-        <button id="cmpAddBtn" class="secondary">Add heat pump&hellip;</button>
-        <button id="cmpRunBtn" class="primary">Run comparison</button>
-        <button id="cmpClearBtn" class="secondary">Clear</button>
-      </div>
-      <div id="scenarioList" class="scenario-list"></div>
-
       <section id="compareResults" hidden>
-        <h3>Yearly cost comparison</h3>
-        <div class="card">
-          <div class="table-scroll">
-            <table id="cmpTable">
-              <thead><tr><th>Scenario</th><th>Mode</th><th>Setpoint</th><th>Annual cost</th><th>kWh</th><th>Therm</th><th>Savings</th></tr></thead>
-              <tbody id="cmpTableBody"></tbody>
-            </table>
-          </div>
+        <div id="cmpRanking"></div>
+        <section class="card" id="cmpRecCard"><p id="cmpRec"></p></section>
+        <div class="action-row">
+          <button id="reportBtn2" class="secondary" type="button">Save PDF report</button>
         </div>
-        <div class="card">
-          <h3>Annual cost by scenario</h3>
-          <canvas id="cmpChart" width="640" height="340" aria-label="Annual cost by scenario"></canvas>
-        </div>
-        <div id="cmpRec" class="rec"></div>
       </section>
     </section>
-
-    <p id="errorBox" class="error" hidden></p>
   </main>
 
-  <!-- COMPARE MODAL -->
-  <div id="cmpModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="cmpModalTitle" hidden>
-    <div class="modal-card">
-      <h2 id="cmpModalTitle">Add heat pump scenario</h2>
-      <label>Scenario name</label>
-      <input id="cm_name" type="text" placeholder="e.g. Proposed: Bosch 20SEER2" />
-      <label>Backup heating</label>
-      <select id="cm_backup">
-        <option value="dual">Dual fuel (heat pump + furnace)</option>
-        <option value="hp">Heat pump only (electric resistance backup)</option>
-      </select>
-      <label>Heat pump source</label>
-      <div class="radios">
-        <label class="radio"><input type="radio" name="cm_src" value="current" checked /> Use current selection</label>
-        <label class="radio"><input type="radio" name="cm_src" value="manual" /> Enter manually</label>
+  <!-- Sticky CTA (setup tab only) -->
+  <div class="cta-bar" id="ctaBar">
+    <button id="calcBtn" class="primary big" type="button">See results</button>
+  </div>
+
+  <!-- Bottom navigation -->
+  <nav class="tabbar" aria-label="Main">
+    <button class="tabbtn active" data-tab="setup" type="button" aria-label="Setup">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>
+      <span>Setup</span>
+    </button>
+    <button class="tabbtn" data-tab="results" type="button" aria-label="Results">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-6"/><path d="M22 20H2"/></svg>
+      <span>Results</span>
+    </button>
+    <button class="tabbtn" data-tab="compare" type="button" aria-label="Compare">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3H4v18h5"/><path d="M15 3h5v18h-5"/><path d="M12 1v22"/></svg>
+      <span>Compare</span>
+    </button>
+  </nav>
+
+  <!-- ============ SHEETS ============ -->
+  <div class="sheet" id="sheetManual" role="dialog" aria-modal="true" aria-labelledby="manualTitle" hidden>
+    <div class="sheet-card">
+      <div class="sheet-grab"></div>
+      <h2 id="manualTitle">Heat pump specs</h2>
+      <p class="field-note">From the NEEP listing, AHRI certificate, or the manufacturer's expanded performance data.</p>
+      <div class="grid2">
+        <label>Brand<input id="m_brand" type="text" placeholder="Brand" /></label>
+        <label>Model<input id="m_model" type="text" placeholder="Model" /></label>
+      </div>
+      <label>Stages
+        <select id="m_stages">
+          <option value="1">Single stage / variable</option>
+          <option value="2">Two stage</option>
+        </select>
+      </label>
+      <h3 class="grp">Stage 1</h3>
+      <div class="grid2">
+        <label>BTU/h @ 47&deg;F<input id="m_cap47" type="number" min="0" step="500" placeholder="22000" inputmode="numeric" /></label>
+        <label>BTU/h @ 17&deg;F<input id="m_cap17" type="number" min="0" step="500" placeholder="16900" inputmode="numeric" /></label>
+        <label>COP @ 47&deg;F<input id="m_cop47" type="number" min="0" step="0.05" placeholder="3.5" inputmode="decimal" /></label>
+        <label>COP @ 17&deg;F<input id="m_cop17" type="number" min="0" step="0.05" placeholder="2.5" inputmode="decimal" /></label>
+        <label>HSPF2<input id="m_hspf2" type="number" min="0" step="0.1" placeholder="9.0" inputmode="decimal" /></label>
+        <label>Lockout temp &deg;F<input id="m_lockout" type="number" step="1" placeholder="optional" inputmode="numeric" /></label>
+      </div>
+      <div id="stage2Wrap" hidden>
+        <h3 class="grp">Stage 2</h3>
+        <div class="grid2">
+          <label>BTU/h @ 47&deg;F<input id="m2_cap47" type="number" min="0" step="500" inputmode="numeric" /></label>
+          <label>BTU/h @ 17&deg;F<input id="m2_cap17" type="number" min="0" step="500" inputmode="numeric" /></label>
+          <label>COP @ 47&deg;F<input id="m2_cop47" type="number" min="0" step="0.05" inputmode="decimal" /></label>
+          <label>COP @ 17&deg;F<input id="m2_cop17" type="number" min="0" step="0.05" inputmode="decimal" /></label>
+        </div>
+      </div>
+      <div id="manualStatus" class="field-note err" role="status" aria-live="polite"></div>
+      <div class="sheet-actions">
+        <button class="secondary" type="button" data-close="sheetManual">Cancel</button>
+        <button id="useManualBtn" class="primary" type="button">Use these specs</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="sheet" id="sheetEstimate" role="dialog" aria-modal="true" aria-labelledby="estTitle" hidden>
+    <div class="sheet-card">
+      <div class="sheet-grab"></div>
+      <h2 id="estTitle">Estimate heat load</h2>
+      <p class="field-note">A rough rule-of-thumb — a Manual&nbsp;J calculation from a contractor is always better.</p>
+      <label>Heated floor area
+        <span class="unit-wrap"><input id="est_sqft" type="number" min="100" step="50" placeholder="e.g. 1800" inputmode="numeric" /><span class="unit">sq ft</span></span>
+      </label>
+      <label>Insulation &amp; air sealing
+        <select id="est_quality">
+          <option value="55">Poor — older home, drafty, little insulation</option>
+          <option value="40" selected>Average — some upgrades, typical tightness</option>
+          <option value="28">Good — well insulated and sealed</option>
+          <option value="18">Excellent — new construction / deep retrofit</option>
+        </select>
+      </label>
+      <div id="estPreview" class="est-preview" hidden></div>
+      <div class="sheet-actions">
+        <button class="secondary" type="button" data-close="sheetEstimate">Cancel</button>
+        <button id="estApplyBtn" class="primary" type="button">Use estimate</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="sheet" id="sheetScenario" role="dialog" aria-modal="true" aria-labelledby="scnTitle" hidden>
+    <div class="sheet-card">
+      <div class="sheet-grab"></div>
+      <h2 id="scnTitle">Add scenario</h2>
+      <label>Name<input id="cm_name" type="text" placeholder="e.g. Proposed: Bosch IDS 2.0" /></label>
+      <label>Heating strategy
+        <select id="cm_backup">
+          <option value="dual">Dual fuel — heat pump + gas furnace</option>
+          <option value="hp">Heat pump only — electric backup</option>
+          <option value="furnace">Gas furnace only</option>
+        </select>
+      </label>
+      <label>Heat pump</label>
+      <div class="seg" role="radiogroup" id="cmSrcSeg">
+        <button class="seg-btn active" data-src="current" type="button">Current</button>
+        <button class="seg-btn" data-src="search" type="button">Search</button>
+        <button class="seg-btn" data-src="manual" type="button">Manual</button>
+      </div>
+      <div id="cmSearchWrap" hidden>
+        <input id="cmSearch" type="search" autocomplete="off" autocapitalize="characters" placeholder="Search model or brand" />
+        <div id="cmResults" class="search-results" hidden></div>
+        <div id="cmPicked" class="field-note"></div>
       </div>
       <div id="cmManual" hidden>
-        <h3 class="grp">Heat pump</h3>
         <div class="grid2">
           <label>Brand<input id="cm_brand" type="text" placeholder="Brand" /></label>
           <label>Model<input id="cm_model" type="text" placeholder="Model" /></label>
-          <label>Stages
-            <select id="cm_stages">
-              <option value="1">1 stage</option>
-              <option value="2">2 stage</option>
-            </select>
-          </label>
         </div>
+        <label>Stages
+          <select id="cm_stages">
+            <option value="1">Single stage / variable</option>
+            <option value="2">Two stage</option>
+          </select>
+        </label>
         <h3 class="grp">Stage 1</h3>
         <div class="grid2">
-          <label>BTU/hr @47&deg;F<input id="cm_cap47" type="number" min="0" step="500" /></label>
-          <label>BTU/hr @17&deg;F<input id="cm_cap17" type="number" min="0" step="500" /></label>
-          <label>COP @47&deg;F<input id="cm_cop47" type="number" min="0" step="0.05" /></label>
-          <label>COP @17&deg;F<input id="cm_cop17" type="number" min="0" step="0.05" /></label>
-          <label>HSPF2<input id="cm_hspf2" type="number" min="0" step="0.1" /></label>
-          <label>Lockout &deg;F<input id="cm_lockout" type="number" step="1" /></label>
+          <label>BTU/h @ 47&deg;F<input id="cm_cap47" type="number" min="0" step="500" inputmode="numeric" /></label>
+          <label>BTU/h @ 17&deg;F<input id="cm_cap17" type="number" min="0" step="500" inputmode="numeric" /></label>
+          <label>COP @ 47&deg;F<input id="cm_cop47" type="number" min="0" step="0.05" inputmode="decimal" /></label>
+          <label>COP @ 17&deg;F<input id="cm_cop17" type="number" min="0" step="0.05" inputmode="decimal" /></label>
+          <label>HSPF2<input id="cm_hspf2" type="number" min="0" step="0.1" inputmode="decimal" /></label>
+          <label>Lockout &deg;F<input id="cm_lockout" type="number" step="1" inputmode="numeric" /></label>
         </div>
         <div id="cmStage2Wrap" hidden>
           <h3 class="grp">Stage 2</h3>
           <div class="grid2">
-            <label>BTU/hr @47&deg;F<input id="cm2_cap47" type="number" min="0" step="500" /></label>
-            <label>BTU/hr @17&deg;F<input id="cm2_cap17" type="number" min="0" step="500" /></label>
-            <label>COP @47&deg;F<input id="cm2_cop47" type="number" min="0" step="0.05" /></label>
-            <label>COP @17&deg;F<input id="cm2_cop17" type="number" min="0" step="0.05" /></label>
+            <label>BTU/h @ 47&deg;F<input id="cm2_cap47" type="number" min="0" step="500" inputmode="numeric" /></label>
+            <label>BTU/h @ 17&deg;F<input id="cm2_cap17" type="number" min="0" step="500" inputmode="numeric" /></label>
+            <label>COP @ 47&deg;F<input id="cm2_cop47" type="number" min="0" step="0.05" inputmode="decimal" /></label>
+            <label>COP @ 17&deg;F<input id="cm2_cop17" type="number" min="0" step="0.05" inputmode="decimal" /></label>
           </div>
         </div>
       </div>
-      <div class="modal-actions">
-        <button id="cmCancel" class="secondary">Cancel</button>
-        <button id="cmAdd" class="primary">Add scenario</button>
+      <div id="cmStatus" class="field-note err" role="status" aria-live="polite"></div>
+      <div class="sheet-actions">
+        <button class="secondary" type="button" data-close="sheetScenario">Cancel</button>
+        <button id="cmAddBtn" class="primary" type="button">Add scenario</button>
       </div>
     </div>
   </div>
 
-  <!-- SETTINGS MODAL -->
-  <div id="settingsModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="settingsModalTitle" hidden>
-    <div class="modal-card">
-      <h2 id="settingsModalTitle">Settings</h2>
-      <label>CORS proxy (for live NEEP lookups)</label>
-      <input id="proxyUrl" type="text" placeholder="https://your-proxy.example/?url=" />
-      <p class="hint">NEEP blocks browser requests, so live model lookup needs a CORS proxy.
-        Leave blank to use the bundled catalog + manual entry. The app tries built-in proxies if this is empty.</p>
-      <label>EIA API key (optional, for live prices)</label>
-      <input id="eiaKey" type="text" placeholder="optional" />
-      <div class="modal-actions">
-        <button id="settingsClose" class="secondary">Close</button>
-        <button id="settingsSave" class="primary">Save</button>
+  <div class="sheet" id="sheetSettings" role="dialog" aria-modal="true" aria-labelledby="setTitle" hidden>
+    <div class="sheet-card">
+      <div class="sheet-grab"></div>
+      <h2 id="setTitle">Settings</h2>
+      <label>CORS proxy for live NEEP lookups<input id="proxyUrl" type="url" placeholder="https://your-proxy.example/?url=" /></label>
+      <p class="field-note">Only needed for live database searches. The bundled catalog of thousands of
+        models works offline with no setup.</p>
+      <div class="sheet-actions">
+        <button class="secondary" type="button" data-close="sheetSettings">Cancel</button>
+        <button id="settingsSaveBtn" class="primary" type="button">Save</button>
       </div>
     </div>
   </div>
 
-  <footer class="foot">
-    <p>Data: NEEP ASHP DB &middot; Open-Meteo weather &middot; EIA prices. Estimates for planning, not a substitute for a professional load calculation.</p>
-  </footer>
+  <div id="toast" class="toast" role="status" aria-live="assertive" hidden></div>
+
+  <!-- Print-only report, composed on demand -->
+  <section id="report" aria-hidden="true"></section>
 
   <script src="data/prices.js"></script>
-  <script src="app.js"></script>
+  <script src="js/engine.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/app.js"></script>
 </body>
 </html>

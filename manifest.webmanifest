@@ -1,14 +1,14 @@
 {
-  "name": "Dual Fuel Balance Point",
-  "short_name": "DualFuel BP",
-  "description": "Calculate the dual-fuel heat-pump / furnace balance point from model number, zip code, weather and energy prices.",
+  "name": "Dual Fuel Optimizer",
+  "short_name": "DualFuel",
+  "description": "Find the temperature where gas beats your heat pump, and what the optimal dual-fuel setup saves per year.",
   "id": ".",
   "start_url": ".",
   "scope": ".",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#0e1512",
-  "theme_color": "#0b3d2e",
+  "background_color": "#0d1322",
+  "theme_color": "#0d1322",
   "icons": [
     {
       "src": "assets/icon.svg",

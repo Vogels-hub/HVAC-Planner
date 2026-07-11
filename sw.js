@@ -1,12 +1,14 @@
 // Minimal offline service worker: precache the app shell so the tool
 // opens instantly and works without a network. Live data (weather, NEEP,
 // prices) is always fetched fresh when online.
-const CACHE = "dualfuel-v5";
+const CACHE = "dualfuel-v7";
 const SHELL = [
   ".",
   "index.html",
   "styles.css",
-  "app.js",
+  "js/engine.js",
+  "js/data.js",
+  "js/app.js",
   "manifest.webmanifest",
   "assets/icon.svg",
   "assets/gear.svg",

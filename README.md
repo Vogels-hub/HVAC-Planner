@@ -1,17 +1,27 @@
-# Dual Fuel Balance Point Tool
+# Dual Fuel Optimizer
 
-An installable **PWA** (progressive web app) for Android (and any modern browser)
-that computes the **dual-fuel balance / break point** for a heat-pump + gas-furnace
-system. Enter a heat-pump **model number** and a **zip code** and the app:
+An installable **PWA** (progressive web app) for phones (and any modern browser)
+that helps technicians and homeowners optimize a **heat-pump + gas-furnace**
+(dual fuel) system. Pick a heat pump and enter a zip code and the app:
 
 1. Pulls the heat pump's **specifications** (heating capacity @ 47°F / 17°F / 5°F,
-   COP @ 5°F, HSPF2) from the NEEP ASHP database.
+   COP @ 5°F, HSPF2) from the NEEP ASHP database (search-as-you-type against a
+   bundled offline catalog, with optional live lookup).
 2. Pulls a full year of **hourly weather** for the zip code (Open-Meteo).
-3. Auto-fills **electricity & natural-gas prices** for the state (EIA averages, editable).
-4. Calculates the **economic break-even temperature** (where gas becomes cheaper than
-   the heat pump), the **capacity balance point** (where the heat pump can no longer
-   meet the home's load), the recommended **dual-fuel setpoint**, and an **annual
-   heating-cost comparison** (heat-pump-only vs furnace-only vs optimal dual fuel).
+3. Auto-fills **electricity & natural-gas prices** for the state (EIA averages, editable),
+   suggests the local **design outdoor temperature** from the weather data, and — when
+   NEEP lists the unit as a **dual-fuel pairing** — auto-fills the paired **furnace's
+   AFUE** from its model number (never overriding a value you typed).
+4. Shows the recommended **dual-fuel switchover temperature** in plain language,
+   the **economic break-even** and **capacity balance point** behind it, and an
+   **annual heating-cost comparison** (dual fuel vs heat-pump-only vs gas-only).
+5. Ranks **competing scenarios** (different models / strategies) side by side and
+   exports a one-tap **PDF report** for the customer file (browser print → save as PDF).
+
+The UI is phone-first: three tabs (**Setup → Results → Compare**), numbered setup
+steps with completion checkmarks, a rough built-in **heat-load estimator**
+(sq ft × insulation quality) for homeowners without a Manual J, and everything
+persists locally so a tech can reopen the app on site with the last job intact.
 
 ## Run / install on Android
 
@@ -82,23 +92,26 @@ Because NEEP blocks browser cross-origin requests, live model lookup needs a rel
 ## Project layout
 
 ```
-index.html            UI
-styles.css            styling (mobile-first, dark)
-app.js                logic: data sources, curves, calculation, charts
+index.html            UI (tabs, sheets, print report shell)
+styles.css            design system (mobile-first, dark)
+js/engine.js          pure calculation engine (browser + Node, no DOM)
+js/data.js            data sources: geocode, weather, NEEP lookup, prices
+js/app.js             UI logic: flow, rendering, charts, compare, report
 manifest.webmanifest  PWA manifest
 sw.js                 offline service worker (caches the app shell)
-assets/icon.svg       app icon
 data/prices.js        EIA state electricity/gas prices
 data/heatpumps.js     bundled NEEP catalog (generated; fallback + offline)
-scripts/fetch_catalog.py   regenerates data/heatpumps.js from NEEP
-scripts/test_calc.js       unit tests for the calculation engine
+scripts/fetch_catalog.py    regenerates data/heatpumps.js from NEEP
+scripts/test_calc.js        unit tests for the calculation engine
+scripts/test_compare.js     DOM smoke test for the UI (jsdom)
 scripts/test_integration.js end-to-end test (real geocode + weather)
 ```
 
 ## Tests
 
 ```bash
-node scripts/test_calc.js          # calculation engine
+node scripts/test_calc.js          # calculation engine (js/engine.js)
+node scripts/test_compare.js       # UI smoke test (requires jsdom)
 node scripts/test_integration.js   # real network: geocode + weather + analyze
 ```
 

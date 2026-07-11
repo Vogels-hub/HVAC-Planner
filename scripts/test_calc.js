@@ -1,5 +1,5 @@
 // Node sanity test for the calculation engine in app.js (no DOM needed).
-const C = require("../app.js");
+const C = require("../js/engine.js");
 
 function approx(name, v, lo, hi) {
   const ok = isFinite(v) && v >= lo && v <= hi;
@@ -74,6 +74,27 @@ const rec = { brand: "LENNOX", model_number: "", outdoor_unit_number: "SL25XPV-0
 const ns = C.normalizeRecord(rec);
 console.log("  valid =", C.specValid(ns), " cap17 =", Math.round(ns.cap17));
 if (!C.specValid(ns)) { console.log("FAIL  normalize should be valid"); process.exitCode = 1; }
+
+console.log("== afueFromModel (dual-fuel furnace pairing) ==");
+const afueCases = [
+  ["*96VTN1002122B*", 0.96],   // ICP: standalone 96
+  ["926TC66100V21***", 0.92],  // Bryant: 926T family -> 92
+  ["GMVC960804CNA", 0.96],     // Goodman: AFUE+capacity concatenated
+  ["59TP6C100V21**22", NaN],   // Carrier: no AFUE digits -> safe NaN
+  ["TM9V080B12MP11", NaN],     // York: leading-zero capacity run ignored
+  ["", NaN]
+];
+for (const [model, want] of afueCases) {
+  const got = C.afueFromModel(model);
+  const ok = isNaN(want) ? isNaN(got) : Math.abs(got - want) < 1e-9;
+  console.log((ok ? "PASS" : "FAIL") + "  afueFromModel(\"" + model + "\") = " + got);
+  if (!ok) process.exitCode = 1;
+}
+const recDF = { ...rec, furnace_unit_number: "*96VTN1002122B*" };
+const nsDF = C.normalizeRecord(recDF);
+if (nsDF.furnaceModel === "*96VTN1002122B*" && Math.abs(nsDF.furnaceAfue - 0.96) < 1e-9) {
+  console.log("PASS  normalizeRecord carries furnace pairing + parsed AFUE");
+} else { console.log("FAIL  furnace pairing not normalized"); process.exitCode = 1; }
 
 console.log(process.exitCode ? "\nSOME TESTS FAILED" : "\nALL TESTS PASSED");
 
